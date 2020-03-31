@@ -1,4 +1,19 @@
+const combineReducers = (obj) => {
+        return (prevState, action) =>{
+          let stateTypes = Object.keys(obj);
+          let reducers = Object.values(obj);
+          newObj = {}
+          for (i = 0; i < stateTypes.length; i++) {
+              let stateType = stateTypes[i];
+              let reducerFunc = reducers[i];
 
+            let output = reducerFunc(prevState[stateType], action);
+            newObj[stateType] = output;
+        }
+        console.log(newObj);
+        return newObj;
+    }
+};
 
 const myNoiseReducer = (prevState = "peace and quiet", action) => {
     switch (action.type) {
@@ -41,15 +56,4 @@ myRootReducer(newState, myInconsequentialAction)
 
 // The first time you call `myRootReducer` with `myInconsequentialAction`, it returns the initial state. This is because the only reducer, `myNoiseReducer`, doesn't respond to that action type. When we invoke it with `newState` and `myNoisyAction`, however, the `noise` key is modified because `myNoiseReducer` returns something other than its `prevState` for the `"noisy action"` action type. When we invoke the `rootReducer`, with `myInconsequentialAction` the second time, the `noise` property doesn't revert back to it's default value, it just doesn't change.
 
-const combineReducers = (obj) =>{
-    let stateTypes = Object.keys(obj).type;
-    let reducers = Object.values(obj);
-
-    for (i=0; i<stateTypes.length; i++){
-        let stateType = stateTypes[i];
-        let reducer = reducers[i];
-    
-        
-    }
-};
 
