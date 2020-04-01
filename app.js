@@ -1,40 +1,77 @@
 
 class Store{
     constructor(rootReducer){
-        this.state = {};
         this.rootReducer = rootReducer;
+        this.state = this.rootReducer({});
+        this.subscriptions = [];
+        
+        this.getState = this.getState.bind(this);
+        this.dispatch = this.dispatch.bind(this);
+        this.subscribe = this.subscribe.bind(this);
     }
 
     getState(){
-        return Object.assign(this.state);
+        return Object.assign({}, this.state);
     }
 
     dispatch(actions){
-       this.state = this.rootReducer(this.state , actions);
+       this.state = this.rootReducer(this.state , actions, this.subscriptions);
     }
 
+    subscribe(cb){
+        this.subscriptions.push(cb);
+    }
+}
+//Combining Reducers
 
+// const combineReducers = (obj) => {
+//         return (prevState = {user: "default"}, action = {type: "default", user: "default"} ) =>{
+        
+//           let stateTypes = Object.keys(obj);
+//           let reducers = Object.values(obj);
+//           newObj = {}
+//           for (i = 0; i < stateTypes.length; i++) {
+//               let stateType = stateTypes[i];
+//               let reducerFunc = reducers[i];
+
+//             let output = reducerFunc(prevState[stateType], action);
+//             newObj[stateType] = output;
+//         }
+//         return newObj;
+//     }
+// };
+
+const createStore = (...args) => new Store(...args);
+
+const combineReducers= config => {
+    return (prevState, action, subscriptions) => {
+        const nextState = {};
+        let stateChanged = false;
+
+        Object.keys(config).forEach(k =>{
+            if (!action){
+                const args = [, {type: "__initialize" }];
+                nextState[k] = config[k](...args);
+                stateChanged = true;
+            } else {
+                const next = config[k](prevState[k], action);
+                if (next !== prevState[k]){
+                    stateChanged = true;
+                    nextState[k] = next;
+                }
+            }
+        });
+
+        if (stateChanged){
+            if (subscriptions){
+                subscriptions.forEach(cb => cb(nextState));
+                return nextState;
+            }
+        }
+        return prevState;
+    }
 }
 
-
-
-
-//Combining Reducers
-const combineReducers = (obj) => {
-        return (prevState, action) =>{
-          let stateTypes = Object.keys(obj);
-          let reducers = Object.values(obj);
-          newObj = {}
-          for (i = 0; i < stateTypes.length; i++) {
-              let stateType = stateTypes[i];
-              let reducerFunc = reducers[i];
-
-            let output = reducerFunc(prevState[stateType], action);
-            newObj[stateType] = output;
-        }
-        return newObj;
-    }
-};
 
 const myNoiseReducer = (prevState = "peace and quiet", action) => {
     switch (action.type) {
@@ -80,31 +117,90 @@ myRootReducer(newState, myInconsequentialAction)
 //Dispatch
 //const dispatch = 
 
-// define a reducer for user:
-const userReducer = (oldUser = null, action) => {
-  if (action.type === "new user") {
-    return action.user;
+// // define a reducer for user:
+// const userReducer = (oldUser = null, action) => {
+//   if (action.type === "new user") {
+//     return action.user;
+//   }
+//   return oldUser;
+// };
+
+// // create a rootReducer:
+// // const rootReducer = combineReducers({
+// //   user: userReducer
+// // });
+
+// // create a store using the rootReducer:
+// // const store = new Store(rootReducer);
+
+// const rootReducerTest = combineReducers({user: userReducer});
+// const storeTest = new Store(rootReducerTest);
+// console.log(storeTest.getState());
+
+
+// // get the state:
+// store.getState(); // => {}
+
+// // invoke the dispatch function to update the user key:
+// const action = {
+//   type: "new user",
+//   user: "Jeffrey Fiddler"
+// };
+
+
+// //store.dispatch(action);
+
+// store.getState(); // => { user: "Jeffrey Fiddler" }
+
+
+////////////////////////////////////////////////////////////////////////////////
+//Subscribing to the Store
+
+  const actionCreator1 = value => ({
+    type: "add",
+    value
+  });
+
+  const actionCreator2 = value => ({
+    type: "subtract",
+    value
+  });
+
+  const actionCreator3 = value => ({
+    type: "no change",
+    value
+  });
+
+  const numberReducer = (num = 0, action) => {
+    switch(action.type) {
+      case "add":
+        return num + action.value;
+      case "subtract":
+        return num - action.value;
+      default:
+        return num;
+    }
   }
-  return oldUser;
-};
 
-// create a rootReducer:
-const rootReducer = combineReducers({
-  user: userReducer
-});
+  const rootReducer = combineReducers({
+    number: numberReducer
+  });
 
-// create a store using the rootReducer:
-const store = new Store(rootReducer);
+  const store = new Store(rootReducer);
 
-// get the state:
-store.getState(); // => {}
+  store.getState() // => { number: 0 }
 
-// invoke the dispatch function to update the user key:
-const action = {
-  type: "new user",
-  user: "Jeffrey Fiddler"
-};
+  const announceStateChange = nextState => {
+    console.log(`That action changed the state! Number is now ${nextState.number}`);
+  }
 
+  store.subscribe(announceStateChange);
 
-store.dispatch(action);
-console.log(store.getState()); // => { user: "Jeffrey Fiddler" }
+  console.log(store.dispatch(actionCreator1(5))); // => "That action changed the state! Number is now 5"
+  console.log(store.dispatch(actionCreator1(5))); // => "That action changed the state! Number is now 10"
+  console.log(store.dispatch(actionCreator2(7))); // => "That action changed the state! Number is now 3"
+  console.log(store.dispatch(actionCreator3(7))); // => Nothing should happen! The reducer doesn't do anything for type "no change"
+  console.log(store.dispatch(actionCreator1(0)));console.log()// => Nothing should happen here either. Even though the reducer checks for the "add" action type, adding 0 to the number won't result in a state change.
+
+  store.getState(); // => { number: 3 }
+
