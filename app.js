@@ -1,7 +1,16 @@
 
 class Store{
-    constructor(func){
+    constructor(rootReducer){
+        this.state = {};
+        this.rootReducer = rootReducer;
+    }
 
+    getState(){
+        return Object.assign(this.state);
+    }
+
+    dispatch(actions){
+       this.state = this.rootReducer(this.state , actions);
     }
 
 
@@ -96,5 +105,6 @@ const action = {
   user: "Jeffrey Fiddler"
 };
 
+
 store.dispatch(action);
-store.getState(); // => { user: "Jeffrey Fiddler" }
+console.log(store.getState()); // => { user: "Jeffrey Fiddler" }
